@@ -1,5 +1,12 @@
-Bangle.setLCDTimeout(0); // turn off the timeout
-Bangle.setLCDPower(1); // keep screen on
+try {
+  Bangle.setLCDTimeout(0); // turn off the timeout
+  Bangle.setLCDPower(1); // keep screen on
+  isBangle = true;
+}
+catch(err) {
+  Pixl.setLCDPower(1); // keep screen on
+  isBangle = false;
+}
 
 var history = new Float32Array(64);
 
@@ -12,13 +19,19 @@ function processTemperature () {
   temp = E.getTemperature();
   history.set(new Float32Array(history.buffer,4));
   history[history.length-1] = temp;
-  console.log("T=", temp);
+  if(isBangle) {
+    console.log("T=", temp);
+  }
 
   g.clear(true);
 
-  g.setFont("6x8:4x5");
+  if(isBangle) {
+    g.setFont("6x8:4x5");
+  }
   metrics = g.stringMetrics("00.00");
-  console.log("Metrics=", metrics);
+  if(isBangle) {
+    console.log("Metrics=", metrics);
+  }
   var rectX0 = 20;
   var rectY0 = 100;
   var marginX = 20;
@@ -32,7 +45,9 @@ function processTemperature () {
   g.setColor(0,0,0);
   g.drawString(temp.toFixed(2), rectX0 + marginX/2, rectY0 + marginY/2);
 
-  g.setFont("6x8:2x2");
+  if(isBangle) {
+    g.setFont("6x8:2x2");
+  }
   var r = require("graph").drawLine(g, history, {
     miny: 0,
     axes : true,
