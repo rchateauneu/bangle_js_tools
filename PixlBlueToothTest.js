@@ -41,6 +41,7 @@ NRF.setServices({
   },
   0xEDCB : {
     0xBA98 : { // Characteristic
+	  maxLen : 20,
       description: "My Characteristic3",
       writable  : true, // Detected as writeable.
       onWrite : function(evt) {

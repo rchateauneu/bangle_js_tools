@@ -1,34 +1,26 @@
-ldfghajkdfghljkfdhNRF.setServices({
+/* This is to understand why we can write only a single byte with BLE. */
+
+var eventData = "NOTHING";
+
+NRF.setServices({
   0xEDCB : {
     0xBA98 : {
-      description: "MyCharact",
+      maxLen : 20,
+      description: "MyCharacter",
       writable  : true,
       onWrite : function(evt) {
-        console.log("evt.data=" + evt.data);
+        eventData = evt.data;
       }
     }
   }
 },
 { advertise: [ 'EDCB' ]});
 
-options = {
-  name: "MyEspruinoPixl",
-  showName: true,
-  interval: 5000,
-  manufacturer: 0x0590,
-  manufacturerData: ["Manuf"]
-};
- 
-NRF.setAdvertising({
-    0x180F : [95] // Service data 0x180F = 95
-  },
-  options);
-
 var counter = 0;
 
 function intervalHandler()
 {
-  Message("counter: " + counter + " " + TimeString(), 3);
+  console.log("counter: " + counter + " Data=" + eventData);
   counter++;
 }
 
@@ -40,10 +32,9 @@ LED.set();
 
 NRF.on('connect', function(addr) {
   console.log("Connection. addr=", addr);
-  Message("Connect", 0);
 });
 
 NRF.on('disconnect', function(reason) {
-  Message("reason=" + reason, 1);
+  console.log("reason=" + reason);
 });
 
