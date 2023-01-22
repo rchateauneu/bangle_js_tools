@@ -14,10 +14,10 @@ Goulettes pour passage de fils propres. Il faut pouvoir faire facilement passer 
 
 Forcer allumage/eteignage du ventilateur et des lumieres avec BLE (Optionnel).
 */
-var interval = null;
+var intervalScreen = null;
+var intervalRelay = null;
 
-
-var shift = -2;
+var shiftTemperature = -2;
 
 // Backlight at startup.
 var ledState = true;
@@ -26,71 +26,102 @@ LED1.set();
 // Global Led.
 var ledGlobal = 0;
 
+var errorMessage = "OK";
+
+var baseY = 9;
+var fontSize = 9;
+
 function DisplayTemperature() {
-	g.setFontBitmap();
-	g.setFontVector(10);
-	g.drawString("Temperature:", 0, 10);
-	var temperatureNum = E.getTemperature() + shift;
+	g.drawString("Temperature:", 0, baseY - fontSize);
+	var temperatureNum = E.getTemperature() + shiftTemperature;
 	var temperatureStr = temperatureNum.toFixed(2) + "°C";
-	g.drawString(temperatureStr, 70, 10);
-	g.drawString("Temperature offset:" + shift  + "°C", 0, 55);
+	g.drawString(temperatureStr, 75, 0);
+	g.drawString("Temperature offset:" + shiftTemperature  + "°C", 0, baseY);
 }
 
 function DisplayTime() {
-	g.setFontBitmap();
-	g.setFontVector(10);
-	g.drawString("Time:", 0, 20);
+  var offsetYTime = baseY + fontSize * 1;
+	g.drawString("Time:", 0, offsetYTime);
 
   const dt = new Date();
   var fmtHours = dt.getHours().toString().padStart(2, '0');
   var fmtMinutes = dt.getMinutes().toString().padStart(2, '0');
   var fmtSeconds = dt.getSeconds().toString().padStart(2, '0');
   var tmStr = fmtHours + ":" + fmtMinutes + ":" + fmtSeconds;
-	g.drawString(tmStr, 70, 20);
+	g.drawString(tmStr, 75, offsetYTime);
 }
 
-
-function UpdateLed() {
-  digitalWrite(D0, ledGlobal);
-  //digitalWrite(D1, ledGlobal);
-  //digitalWrite(D2, ledGlobal);
-  //analogWrite(A1, (1 - ledGlobal) / 2);
-  //analogWrite(A2, 0.01 * ledGlobal);
-  ledGlobal = 1 - ledGlobal;
+function DisplayOneLed(ledValue, offsetX, offsetY) {
+  var plot_size = 8;
+  if(ledValue == 0)
+    g.drawRect(offsetX, offsetY + plot_size, offsetX+plot_size, offsetY);
+  else
+    g.fillRect(offsetX, offsetY + plot_size, offsetX+plot_size, offsetY);
 }
 
-var ledsLight = 0;
-var ledsMax = 255;
-var ratioLimit = 0.1; // Maximum value.
-var ledsDirection = true;
+function DisplayRelayLeds() {
+  var offsetYLeds = baseY + fontSize * 2;
+	g.drawString("Item1:", 0, offsetYLeds);
+  DisplayOneLed(ledRelay1, 40, offsetYLeds);
+	g.drawString("Item2:", 60, offsetYLeds);
+  DisplayOneLed(ledRelay2, 100, offsetYLeds);
+}
 
-function loopLeds() {
-  /*
-  analogWrite(A1, 0.0);
-  analogWrite(A2, 0.2);
-  */
-  if(ledsDirection) {
-    analogWrite(A1, ratioLimit * (ledsLight / ledsMax));
-    analogWrite(A2, ratioLimit * (ledsMax - ledsLight) / ledsMax);
+function DisplayBleControl() {
+  var dataStr = String.fromCharCode.apply(this, eventData);
+	g.drawString("BLE: " + dataStr, 0, baseY + fontSize * 3);
+}
+
+function DisplayConnection() {
+  if(connection_address != null) {
+    if(disconnection_reason != null) {
+      connection_text = "Invalid connection";
+    } else {
+      connection_text = "Connected to " + connection_address;
+    }
   } else {
-    analogWrite(A2, ratioLimit * (ledsLight / ledsMax));
-    analogWrite(A1, ratioLimit * (ledsMax - ledsLight) / ledsMax);
+    if(disconnection_reason != null) {
+      connection_text = "Disconnected:" + disconnection_reason;
+    } else {
+      connection_text = "Invalid disconnection";
+    }
   }
-
-  ledsLight += 1;
-  if(ledsLight >= ledsMax) {
-    ledsLight = 0;
-    ledsDirection = !ledsDirection;
-  }
+	g.drawString(connection_text, 0, baseY + fontSize * 4);
 }
 
+function DisplayError() {
+	g.drawString(errorMessage, 0, baseY + fontSize * 5);
+}
 
 function displayScreen() {
 	g.clear();
+	g.setFontBitmap();
+	g.setFontVector(fontSize);
   DisplayTemperature();
   DisplayTime();
+  DisplayRelayLeds();
+  DisplayBleControl();
+  DisplayConnection();
+  DisplayError();
   g.flip();
   UpdateLed();
+}
+
+// This is only to demonstrate that the switch logic is working.
+function UpdateLed() {
+  digitalWrite(D0, ledGlobal);
+  ledGlobal = 1 - ledGlobal;
+}
+
+var ledRelay1 = 0;
+var ledRelay2 = 1;
+
+// This is only for testing.
+function loopRelayLeds() {
+  digitalWrite(D1, ledRelay1);
+  digitalWrite(D2, ledRelay2);
+  ledRelay1 = 1 - ledRelay1;
+  ledRelay2 = 1 - ledRelay2;
 }
 
 function switchLed() {
@@ -103,32 +134,120 @@ function switchLed() {
   }
 }
 
-function restart() {
-  interval = setInterval(displayScreen, 1000);
-  interval = setInterval(loopLeds, 10);
-  setWatch(callMenu, BTN1, {repeat:true, edge:"rising"});
+var menuObject = null;
+
+function disableMenu() {
+  if(menuObject == null) {
+    errorMessage = errorMessage + ";**";
+    // Possibly called twice by the menu.
+    return;
+  }
+  ClearBtnWatches();
+  Pixl.menu();
+  restart();
+  menuObject = null;
 }
 
-// First menu
-var mainmenu = {
+// This menu is called when pressing button 1.
+var menuDefinition = {
   "" : {
     "title" : "-- Menu --"
   },
   "Backlight" : switchLed,
   "Calibrate" : {
-    value : shift,
+    value : shiftTemperature,
     min:-20, max:+20, step:1,
-    onchange : v => { shift=v; }
+    onchange : v => { shiftTemperature = v; }
   },
-  "Exit" : function() {
-    Pixl.menu();
-    restart();
-  },
+  "Exit" : disableMenu,
 };
 
+var menu = require("graphical_menu");
+
+var watchBTN1 = null;
+var watchBTN2 = null;
+var watchBTN3 = null;
+var watchBTN4 = null;
+
+function ClearBtnWatches() {
+  if(watchBTN1 != null) {
+    clearWatch(watchBTN1);
+    watchBTN1 = null;
+  }
+  if(watchBTN2 != null) {
+    clearWatch(watchBTN2);
+    watchBTN2 = null;
+  }
+  if(watchBTN3 != null) {
+    clearWatch(watchBTN3);
+    watchBTN3 = null;
+  }
+  if(watchBTN4 != null) {
+    clearWatch(watchBTN4);
+    watchBTN4 = null;
+  }
+}
+
 function callMenu() {
-  Pixl.menu(mainmenu);
-  clearInterval(interval);
+  clearInterval(intervalScreen);
+  intervalScreen = null;
+  clearInterval(intervalRelay);
+  intervalRelay = null;
+
+  g.clear();
+  menuObject = Pixl.menu(menuDefinition);
+  ClearBtnWatches();
+
+  watchBTN1 = setWatch(function() {
+    menuObject.move(-1); // up
+  }, BTN1, {repeat:true, debounce:50, edge:"rising"});
+
+  watchBTN4 = setWatch(function() {
+    menuObject.move(1); // down
+  }, BTN4, {repeat:true, debounce:50, edge:"rising"});
+
+  watchBTN3 = setWatch(function() {
+    // Possibly called twice by the menu.
+    if(menuObject != null)
+      menuObject.select(); // select
+  }, BTN3, {repeat:true, debounce:50, edge:"rising"});
+
+}
+
+// Sent as a string from BLE.
+var eventData = [];
+
+NRF.setServices({
+  0xEDCB : {
+    0xBA98 : {
+      maxLen : 31,
+      description: "GlassHouseControl",
+      writable  : true,
+      onWrite : function(evt) {
+        eventData = evt.data;
+      }
+    }
+  }
+},
+{ advertise: [ 'EDCB' ]});
+
+var connection_address = null;
+var disconnection_reason = "Off";
+
+NRF.on('connect', function(addr) {
+  connection_address = addr;
+  disconnection_reason = null;
+});
+
+NRF.on('disconnect', function(reason) {
+  connection_address = null;
+  disconnection_reason = reason;
+});
+
+function restart() {
+  intervalScreen = setInterval(displayScreen, 1000);
+  intervalRelay = setInterval(loopRelayLeds, 5000);
+  watchBTN1 = setWatch(callMenu, BTN1, {repeat:true, edge:"rising"});
 }
 
 restart();
