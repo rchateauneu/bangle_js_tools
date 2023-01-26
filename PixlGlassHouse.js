@@ -1,3 +1,18 @@
+var ledState = true;
+LED1.set();
+
+function switchLed() {
+  if(ledState) {
+    ledState = false;
+    LED1.reset();
+  } else {
+    ledState = true;
+    LED1.set();
+  }
+}
+
+var shiftTemperature = 10;
+
 /*
 Afficher temperature: Avec calibration ? Commande ventilateur.
 Afficher heure : Commande lumiere.
@@ -142,7 +157,6 @@ function disableMenu() {
     // Possibly called twice by the menu.
     return;
   }
-  ClearBtnWatches();
   Pixl.menu();
   restart();
   menuObject = null;
@@ -162,31 +176,61 @@ var menuDefinition = {
   "Exit" : disableMenu,
 };
 
-var menu = require("graphical_menu");
-
-var watchBTN1 = null;
-var watchBTN2 = null;
-var watchBTN3 = null;
-var watchBTN4 = null;
-
-function ClearBtnWatches() {
-  if(watchBTN1 != null) {
-    clearWatch(watchBTN1);
-    watchBTN1 = null;
+E.showMenu = (function(menudata) {
+  if (Pixl.btnWatches) {
+    Pixl.btnWatches.forEach(clearWatch);
+    Pixl.btnWatches = undefined;
   }
-  if(watchBTN2 != null) {
-    clearWatch(watchBTN2);
-    watchBTN2 = null;
-  }
-  if(watchBTN3 != null) {
-    clearWatch(watchBTN3);
-    watchBTN3 = null;
-  }
-  if(watchBTN4 != null) {
-    clearWatch(watchBTN4);
-    watchBTN4 = null;
-  }
-}
+  g.clear();g.flip(); // clear screen if no menu supplied
+  if (!menudata) return;
+  if (!menudata[""]) menudata[""]={};
+  g.setFontBitmap();g.setFontAlign(-1,-1,0);
+  var w = g.getWidth()-9;
+  var h = g.getHeight();
+  menudata[""].x=9;
+  menudata[""].x2=w-2;
+  menudata[""].preflip=function() {
+    g.drawImage(E.toString(8,8,1,
+      0b00010000,
+      0b00111000,
+      0b01111100,
+      0b11111110,
+      0b00010000,
+      0b00010000,
+      0b00010000,
+      0b00010000
+    ),0,4);
+    g.drawImage(E.toString(8,8,1,
+      0b00010000,
+      0b00010000,
+      0b00010000,
+      0b00010000,
+      0b11111110,
+      0b01111100,
+      0b00111000,
+      0b00010000
+    ),0,h-12);
+    g.drawImage(E.toString(8,8,1,
+      0b00000000,
+      0b00001000,
+      0b00001100,
+      0b00001110,
+      0b11111111,
+      0b00001110,
+      0b00001100,
+      0b00001000
+    ),w+1,h-12);
+    //g.drawLine(7,0,7,h);
+    //g.drawLine(w,0,w,h);
+  };
+  var m = require("graphical_menu").list(g, menudata);
+  Pixl.btnWatches = [
+    setWatch(function() { m.move(-1); }, BTN1, {repeat:1}),
+    setWatch(function() { m.move(1); }, BTN4, {repeat:1}),
+    setWatch(function() { m.select(); }, BTN3, {repeat:1})
+  ];
+  return m;
+});
 
 function callMenu() {
   clearInterval(intervalScreen);
@@ -195,23 +239,7 @@ function callMenu() {
   intervalRelay = null;
 
   g.clear();
-  menuObject = Pixl.menu(menuDefinition);
-  ClearBtnWatches();
-
-  watchBTN1 = setWatch(function() {
-    menuObject.move(-1); // up
-  }, BTN1, {repeat:true, debounce:50, edge:"rising"});
-
-  watchBTN4 = setWatch(function() {
-    menuObject.move(1); // down
-  }, BTN4, {repeat:true, debounce:50, edge:"rising"});
-
-  watchBTN3 = setWatch(function() {
-    // Possibly called twice by the menu.
-    if(menuObject != null)
-      menuObject.select(); // select
-  }, BTN3, {repeat:true, debounce:50, edge:"rising"});
-
+  menuObject = E.showMenu(menuDefinition);
 }
 
 // Sent as a string from BLE.
@@ -247,7 +275,7 @@ NRF.on('disconnect', function(reason) {
 function restart() {
   intervalScreen = setInterval(displayScreen, 1000);
   intervalRelay = setInterval(loopRelayLeds, 5000);
-  watchBTN1 = setWatch(callMenu, BTN1, {repeat:true, edge:"rising"});
+  watchBTN2 = setWatch(callMenu, BTN2, {repeat:true});
 }
 
 restart();
