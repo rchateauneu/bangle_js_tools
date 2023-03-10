@@ -184,14 +184,73 @@ function disableMenu() {
 }
 
 // This menu is called when pressing button 1.
+
+/*
+Ajouter dans le menu:
+Temperature mini pour le ventilateur
+Mode test du ventilateur (on par defaut)
+Debut/fin eclairage
+Mode test de l'eclairage (on par defaut)
+*/
+
+var fanTestMode = true;
+
+var fanTemperature = 30;
+
+var submenuFan = {
+  "" : {
+    "title" : "-- Fan --"
+  },
+  "Test mode" : {
+    value : fanTestMode,
+    format : fanTestMode => fanTestMode ? "On" : "Off",
+    onchange : v => { fanTestMode = v; }
+  },
+  "Temperature" : {
+    value : fanTemperature,
+    min : 10, max : 50, step : 1,
+    onchange : v => { fanTemperature = v; }
+  },
+  "< Back" : function() { E.showMenu(menuDefinition); },
+};
+
+var lightsTestMode = true;
+
+var lightsStartHour = 0;
+var lightsEndHour = 24;
+
+var submenuLights = {
+  "" : {
+    "title" : "-- Lights --"
+  },
+  "Test mode" : {
+    value : lightsTestMode,
+    format : lightsTestMode => lightsTestMode ? "On" : "Off",
+    onchange : v => { lightsTestMode = v; }
+  },
+  "Start hour" : {
+    value : lightsStartHour,
+    min : 0, max : 24, step : 1,
+    onchange : v => { lightsStartHour = v; }
+  },
+  "End hour" : {
+    value : lightsEndHour,
+    min : 0, max : 24, step : 1,
+    onchange : v => { lightsEndHour = v; }
+  },
+  "< Back" : function() { E.showMenu(menuDefinition); },
+};
+
 var menuDefinition = {
   "" : {
     "title" : "-- Menu --"
   },
   "Backlight" : switchLed,
+  "Fan" :  function() { E.showMenu(submenuFan); },
+  "Light" :  function() { E.showMenu(submenuLights); },
   "Calibrate" : {
     value : shiftTemperature,
-    min:-20, max:+20, step:1,
+    min : -20, max : +20, step : 1,
     onchange : v => { shiftTemperature = v; }
   },
   "Exit" : disableMenu,
