@@ -1,7 +1,7 @@
 var ledState = true;
 LED1.set();
 
-function switchLed() {
+function switchBacklight() {
   if(ledState) {
     ledState = false;
     LED1.reset();
@@ -19,7 +19,7 @@ var shiftTemperature = 10;
 var intervalScreen = null;
 var intervalRelay = null;
 
-var shiftTemperature = -2;
+var shiftTemperature = -0.5;
 
 // Backlight at startup.
 var ledState = true;
@@ -47,14 +47,18 @@ const offsetYTimeTemp = baseY;
 function DisplayTemperature() {
   var temperatureNum = E.getTemperature() + shiftTemperature;
   var temperatureStr = temperatureNum.toFixed(2) + "°C";
-  g.drawString(temperatureStr + " (" + shiftTemperature  + "°C)", 60, offsetYTimeTemp);
+  g.drawString(temperatureStr + " (" + shiftTemperature  + "°C)", 50, offsetYTimeTemp);
+}
+
+function PadZeroes(number) {
+	return number.toString().padStart(2, '0');
 }
 
 function DisplayTime() {
   const dt = new Date();
-  var fmtHours = dt.getHours().toString().padStart(2, '0');
-  var fmtMinutes = dt.getMinutes().toString().padStart(2, '0');
-  var fmtSeconds = dt.getSeconds().toString().padStart(2, '0');
+  var fmtHours = PadZeroes(dt.getHours());
+  var fmtMinutes = PadZeroes(dt.getMinutes());
+  var fmtSeconds = PadZeroes(dt.getSeconds());
   var tmStr = fmtHours + ":" + fmtMinutes + ":" + fmtSeconds;
   g.drawString(tmStr, 0, offsetYTimeTemp);
 }
@@ -77,7 +81,7 @@ function DisplayTestFlag(theFlag, yFlag) {
 
 function DisplayLedFan() {
   g.drawString("Fan:", 0, offsetYLedFan);
-  DisplayPlot(ledRelay1, 35, offsetYLedFan);
+  DisplayPlot(ledFan, 35, offsetYLedFan);
   DisplayTestFlag(fanTestMode, offsetYLedFan);
   g.drawString(fanTemperature + "°C", 50, offsetYLedFan);
 }
@@ -86,9 +90,9 @@ const offsetYLedLights = baseY + fontSize * 2;
 
 function DisplayLedLights() {
   g.drawString("Lights:", 0, offsetYLedLights);
-  DisplayPlot(ledRelay2, 35, offsetYLedLights);
+  DisplayPlot(ledLights, 35, offsetYLedLights);
   DisplayTestFlag(lightsTestMode, offsetYLedLights);
-  g.drawString(lightsStartHour + "H-" + lightsEndHour + "H", 50, offsetYLedLights);
+  g.drawString(PadZeroes(lightsStartHour) + "H-" + PadZeroes(lightsEndHour) + "H", 50, offsetYLedLights);
 }
 
 function DisplayRelayLeds() {
@@ -161,18 +165,34 @@ function UpdateLed() {
   ledGlobal = 1 - ledGlobal;
 }
 
-var ledRelay1 = 0;
-var ledRelay2 = 1;
+var ledFan = 0;
+var ledLights = 1;
 
 // This is only for testing.
 function loopRelayLeds() {
-  digitalWrite(D1, ledRelay1);
-  digitalWrite(D2, ledRelay2);
-  ledRelay1 = 1 - ledRelay1;
-  ledRelay2 = 1 - ledRelay2;
+  if(fanTestMode) {
+    ledFan = 1 - ledFan;
+  } else {
+	  var temperatureNum = E.getTemperature() + shiftTemperature;
+	  ledFan = fanTemperature >= temperatureNum;
+  }
+  digitalWrite(D1, ledFan);
+
+  if(fanTestMode) {
+    ledLights = 1 - ledLights;
+  } else {
+	  currentHour = dt.getHours();
+	  if(lightsStartHour < lightsEndHour) {
+		  inRange = lightsStartHour <= currentHour && currentHour <= lightsEndHour;
+	  } else {
+		  inRange = lightsEndHour <= currentHour && currentHour <= lightsStartHour;
+      }
+      ledLights = inRange ? 1 : 0;
+  }
+  digitalWrite(D2, ledLights);
 }
 
-function switchLed() {
+function switchBacklight() {
   if(ledState) {
     ledState = false;
     LED1.reset();
@@ -208,7 +228,7 @@ var submenuFan = {
   },
   "Temperature" : {
     value : fanTemperature,
-    min : 10, max : 50, step : 1,
+    min : 10, max : 50, step : 0.5,
     onchange : v => { fanTemperature = v; }
   },
   "< Back" : function() { E.showMenu(menuDefinition); },
@@ -240,7 +260,7 @@ var menuDefinition = {
   "" : {
     "title" : "-- Menu --"
   },
-  "Backlight" : switchLed,
+  "Backlight" : switchBacklight,
   "Fan" :  function() { E.showMenu(submenuFan); },
   "Light" :  function() { E.showMenu(submenuLights); },
   "Calibrate" : {
