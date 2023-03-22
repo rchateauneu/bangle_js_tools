@@ -12,7 +12,7 @@ function switchBacklight() {
 }
 
 // Use internal or external buttons. This is for debugging
-var internalButtons = true;
+var internalButtons = false;
 
 var shiftTemperature = 10;
 
@@ -271,6 +271,17 @@ var menuDefinition = {
   "Exit" : disableMenu,
 };
 
+/*
+      0b01000100, // 4
+      0b01000100,
+      0b01000100,
+      0b01111100,
+      0b00000100,
+      0b00000100,
+      0b00000100,
+      0b00000000
+*/
+
 E.showMenu = (function(menudata) {
   if (Pixl.btnWatches) {
     Pixl.btnWatches.forEach(clearWatch);
@@ -286,34 +297,34 @@ E.showMenu = (function(menudata) {
   menudata[""].x2=w-2;
   menudata[""].preflip=function() {
     g.drawImage(E.toString(8,8,1,
+      0b00010000, // 1
+      0b00110000,
+      0b01010000,
+      0b00010010,
       0b00010000,
-      0b00111000,
-      0b01111100,
-      0b11111110,
       0b00010000,
       0b00010000,
-      0b00010000,
-      0b00010000
+      0b00000000
     ),0,4);
     g.drawImage(E.toString(8,8,1,
-      0b00010000,
-      0b00010000,
-      0b00010000,
-      0b00010000,
-      0b11111110,
+      0b01111100, // 2
+      0b00000100,
+      0b00000100,
       0b01111100,
-      0b00111000,
-      0b00010000
+      0b01000000,
+      0b01000000,
+      0b01111100,
+      0b00000000
     ),0,h-12);
     g.drawImage(E.toString(8,8,1,
-      0b00000000,
-      0b00001000,
-      0b00001100,
-      0b00001110,
-      0b11111111,
-      0b00001110,
-      0b00001100,
-      0b00001000
+      0b01111100, // 3
+      0b00000100,
+      0b00000100,
+      0b01111100,
+      0b00000100,
+      0b00000100,
+      0b01111100,
+      0b00000000
     ),w+1,h-12);
     //g.drawLine(7,0,7,h);
     //g.drawLine(w,0,w,h);
@@ -327,9 +338,9 @@ E.showMenu = (function(menudata) {
       ];
 	} else {
 	  Pixl.btnWatches = [
-		  setWatch(function() { m.move(-1); }, D8, {repeat:1}),
-		  setWatch(function() { m.move(1); }, D9, {repeat:1}),
-		  setWatch(function() { m.select(); }, D10, {repeat:1})
+		  setWatch(function() { m.move(-1); }, D8, {repeat:1, edge:'rising', debounce:10}),
+		  setWatch(function() { m.move(1); }, D9, {repeat:1, edge:'rising', debounce:10}),
+		  setWatch(function() { m.select(); }, D10, {repeat:1, edge:'rising', debounce:10})
       ];
 	}
   return m;
