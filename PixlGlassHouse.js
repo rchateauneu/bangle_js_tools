@@ -173,19 +173,20 @@ function loopRelayLeds() {
   if(fanTestMode) {
     ledFan = 1 - ledFan;
   } else {
-	  var temperatureNum = E.getTemperature() + shiftTemperature;
-	  ledFan = fanTemperature >= temperatureNum;
+      var temperatureNum = E.getTemperature() + shiftTemperature;
+      ledFan = fanTemperature >= temperatureNum;
   }
   digitalWrite(D1, ledFan);
 
-  if(fanTestMode) {
+  if(lightsTestMode) {
     ledLights = 1 - ledLights;
   } else {
-	  currentHour = dt.getHours();
-	  if(lightsStartHour < lightsEndHour) {
-		  inRange = lightsStartHour <= currentHour && currentHour <= lightsEndHour;
-	  } else {
-		  inRange = lightsEndHour <= currentHour && currentHour <= lightsStartHour;
+    const dt = new Date();
+    currentHour = dt.getHours();
+    if(lightsStartHour < lightsEndHour) {
+      inRange = lightsStartHour <= currentHour && currentHour <= lightsEndHour;
+    } else {
+      inRange = lightsEndHour <= currentHour && currentHour <= lightsStartHour;
       }
       ledLights = inRange ? 1 : 0;
   }
@@ -223,7 +224,7 @@ var submenuFan = {
   },
   "Test mode" : {
     value : fanTestMode,
-    format : fanTestMode => fanTestMode ? "On" : "Off",
+    format : x => x ? "On" : "Off",
     onchange : v => { fanTestMode = v; }
   },
   "Temperature" : {
@@ -240,7 +241,7 @@ var submenuLights = {
   },
   "Test mode" : {
     value : lightsTestMode,
-    format : lightsTestMode => lightsTestMode ? "On" : "Off",
+    format : x => x ? "On" : "Off",
     onchange : v => { lightsTestMode = v; }
   },
   "Start hour" : {
